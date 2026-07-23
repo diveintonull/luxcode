@@ -1,0 +1,1147 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LuxCode 项目架构、目录与源码实现说明">
+  <title>LuxCode · Code Wiki</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --paper: #ffffff;
+      --paper-2: #f0f3f8;
+      --sidebar: #101626;
+      --sidebar-2: #171f34;
+      --text: #172033;
+      --muted: #68738a;
+      --line: #e2e7f0;
+      --brand: #6d5dfc;
+      --brand-2: #39b8a4;
+      --brand-soft: #eeecff;
+      --code: #121827;
+      --code-text: #cbd5e1;
+      --warning: #c47a16;
+      --shadow: 0 18px 55px rgba(32, 42, 70, .09);
+      --radius: 18px;
+      --sidebar-width: 286px;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0d1220;
+      --paper: #141b2d;
+      --paper-2: #1a2338;
+      --text: #ecf1ff;
+      --muted: #9ba8c1;
+      --line: #29344d;
+      --brand: #9588ff;
+      --brand-2: #55d5c0;
+      --brand-soft: #27234b;
+      --code: #080c15;
+      --code-text: #d7e0ef;
+      --shadow: 0 20px 60px rgba(0, 0, 0, .22);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.68;
+      text-rendering: optimizeLegibility;
+    }
+    button, input { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    code, pre, .mono {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", "Cascadia Code", monospace;
+    }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sidebar-width);
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      color: #dce5ff;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(109, 93, 252, .26), transparent 36%),
+        linear-gradient(180deg, var(--sidebar), #0c1120 72%);
+      border-right: 1px solid rgba(255, 255, 255, .08);
+    }
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 26px 24px 20px;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: white;
+      font: 800 18px/1 ui-monospace, monospace;
+      background: linear-gradient(135deg, #7565ff, #28bda5);
+      box-shadow: 0 10px 24px rgba(109, 93, 252, .3);
+    }
+    .brand strong { display: block; letter-spacing: .01em; }
+    .brand small { color: #8490aa; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; }
+    .side-meta {
+      margin: 0 18px 18px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 12px;
+      color: #97a4bf;
+      background: rgba(255,255,255,.035);
+      font-size: 12px;
+    }
+    .side-meta b { color: #e7ecff; font-weight: 600; }
+    .nav-label {
+      padding: 0 26px 8px;
+      color: #697590;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .nav { overflow-y: auto; padding: 0 12px 24px; }
+    .nav a {
+      position: relative;
+      display: flex;
+      gap: 11px;
+      align-items: center;
+      padding: 9px 13px;
+      margin: 2px 0;
+      color: #98a5bf;
+      border-radius: 9px;
+      font-size: 13px;
+      transition: .18s ease;
+    }
+    .nav a:hover, .nav a.active { color: #fff; background: rgba(255,255,255,.07); }
+    .nav a.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 3px;
+      height: 18px;
+      border-radius: 9px;
+      background: #6fe0cc;
+    }
+    .nav-index { width: 20px; color: #58657e; font: 700 10px/1 ui-monospace, monospace; }
+    .side-footer { margin-top: auto; padding: 17px 24px 22px; color: #66738c; font-size: 11px; }
+
+    .topbar {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      left: var(--sidebar-width);
+      right: 0;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 30px;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(16px);
+    }
+    .crumbs { display: flex; gap: 9px; align-items: center; color: var(--muted); font-size: 13px; }
+    .crumbs b { color: var(--text); }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .icon-button {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 11px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      background: var(--paper);
+      cursor: pointer;
+    }
+    .icon-button:hover { color: var(--text); border-color: var(--brand); }
+    .mobile-menu { display: none; }
+
+    main { margin-left: var(--sidebar-width); padding: 64px 0 80px; }
+    .content { width: min(1180px, calc(100% - 64px)); margin: 0 auto; }
+    .section { padding-top: 80px; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 22px; height: 2px; background: currentColor; }
+    h1, h2, h3, h4 { margin: 0; line-height: 1.18; letter-spacing: -.025em; }
+    h1 { margin-top: 18px; max-width: 900px; font-size: clamp(42px, 6vw, 76px); }
+    h2 { margin-top: 12px; font-size: clamp(30px, 4vw, 46px); }
+    h3 { font-size: 20px; }
+    p { margin: 0; }
+    .section-lead { max-width: 750px; margin-top: 15px; color: var(--muted); font-size: 16px; }
+
+    .hero {
+      position: relative;
+      min-height: 650px;
+      display: grid;
+      align-content: center;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before, .hero::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(2px);
+    }
+    .hero::before {
+      width: 440px;
+      height: 440px;
+      right: -120px;
+      top: 60px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--brand) 20%, transparent), transparent 68%);
+    }
+    .hero::after {
+      width: 340px;
+      height: 340px;
+      left: 36%;
+      bottom: -210px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--brand-2) 17%, transparent), transparent 68%);
+    }
+    .hero-copy { position: relative; z-index: 1; padding: 72px 0 56px; }
+    .hero h1 span { color: var(--brand); }
+    .hero-summary { max-width: 760px; margin: 24px 0 0; color: var(--muted); font-size: 18px; }
+    .hero-actions { display: flex; gap: 11px; flex-wrap: wrap; margin-top: 30px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 16px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--text);
+      background: var(--paper);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(30, 43, 70, .04);
+    }
+    .button.primary { color: white; border-color: var(--brand); background: var(--brand); }
+    .button:hover { transform: translateY(-1px); }
+    .stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      margin-top: 60px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .stat { padding: 20px; border-right: 1px solid var(--line); }
+    .stat:last-child { border: 0; }
+    .stat strong { display: block; color: var(--text); font-size: 24px; line-height: 1.2; }
+    .stat span { color: var(--muted); font-size: 11px; }
+
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: 0 8px 30px rgba(26, 38, 68, .045);
+    }
+    .feature-grid { margin-top: 30px; }
+    .feature-card { padding: 22px; }
+    .feature-number {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      color: var(--brand);
+      background: var(--brand-soft);
+      font: 800 11px/1 ui-monospace, monospace;
+    }
+    .feature-card p { margin-top: 9px; color: var(--muted); font-size: 13px; }
+    .feature-card .tag-row { margin-top: 15px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      margin: 2px 4px 2px 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--paper-2);
+      font: 700 10px/1.3 ui-monospace, monospace;
+    }
+
+    .architecture {
+      margin-top: 32px;
+      padding: 24px;
+      overflow: hidden;
+    }
+    .arch-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .arch-node {
+      position: relative;
+      min-height: 126px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper-2);
+    }
+    .arch-node.core { color: white; border-color: transparent; background: linear-gradient(140deg, #6858ee, #5144ba); }
+    .arch-node.safety { border-color: color-mix(in srgb, var(--brand-2) 50%, var(--line)); }
+    .arch-node small { display: block; margin-bottom: 8px; color: var(--muted); font: 800 10px/1 ui-monospace, monospace; letter-spacing: .1em; }
+    .arch-node.core small { color: #d8d3ff; }
+    .arch-node strong { display: block; margin-bottom: 6px; font-size: 16px; }
+    .arch-node p { color: var(--muted); font-size: 12px; }
+    .arch-node.core p { color: #dfdcff; }
+    .arch-connector { display: grid; place-items: center; height: 46px; color: var(--brand); font: 700 18px/1 ui-monospace, monospace; }
+    .arch-caption { margin-top: 17px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    .mode-grid { margin-top: 18px; }
+    .mode-card { padding: 18px; }
+    .mode-card code { color: var(--brand); font-weight: 700; }
+    .mode-card p { margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+    .flow { margin-top: 32px; padding: 8px 0; }
+    .flow-item { display: grid; grid-template-columns: 56px 1fr; gap: 16px; position: relative; }
+    .flow-item:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      left: 27px;
+      top: 52px;
+      bottom: -8px;
+      width: 1px;
+      background: var(--line);
+    }
+    .flow-index {
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--brand);
+      background: var(--paper);
+      font: 800 12px/1 ui-monospace, monospace;
+    }
+    .flow-body { padding: 8px 0 30px; }
+    .flow-body p { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .path { display: inline-block; margin-top: 8px; color: var(--brand-2); font: 700 11px/1.45 ui-monospace, monospace; }
+
+    .tabs { margin-top: 30px; }
+    .tab-list { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab-button {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--muted);
+      background: var(--paper);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tab-button.active { color: white; border-color: var(--brand); background: var(--brand); }
+    .tab-panel { display: none; grid-template-columns: minmax(0, 1fr) minmax(300px, .85fr); gap: 16px; }
+    .tab-panel.active { display: grid; }
+    .detail-card { padding: 24px; }
+    .detail-card p, .detail-card li { color: var(--muted); font-size: 13px; }
+    .detail-card ul { margin: 16px 0 0; padding-left: 20px; }
+    .detail-card li + li { margin-top: 7px; }
+    .code-card { padding: 0; overflow: hidden; background: var(--code); color: var(--code-text); }
+    .code-head { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #273047; color: #7f8da6; font-size: 10px; }
+    pre { margin: 0; padding: 18px; overflow-x: auto; font-size: 11px; line-height: 1.75; white-space: pre-wrap; }
+    .kw { color: #c7a0ff; }
+    .fn { color: #7dd3fc; }
+    .cm { color: #66738b; }
+    .st { color: #86dfb9; }
+
+    .module-grid { margin-top: 30px; }
+    .module-card { position: relative; padding: 20px; overflow: hidden; }
+    .module-card::after { content: attr(data-count); position: absolute; right: 18px; top: 18px; color: var(--brand); font: 800 10px/1 ui-monospace, monospace; }
+    .module-card code { display: inline-block; margin-bottom: 10px; color: var(--brand); font-size: 13px; font-weight: 800; }
+    .module-card p { color: var(--muted); font-size: 12px; }
+    .module-card .mini { margin-top: 12px; color: var(--muted); font: 600 10px/1.5 ui-monospace, monospace; }
+
+    .tree-card { margin-top: 22px; overflow: hidden; }
+    .tree-top { display: flex; justify-content: space-between; align-items: center; padding: 13px 17px; border-bottom: 1px solid var(--line); }
+    .tree-top span { color: var(--muted); font-size: 11px; }
+    .tree-card pre { max-height: 520px; color: #b9c6dc; background: var(--code); font-size: 12px; }
+    .tree-dir { color: #a89cff; }
+    .tree-note { color: #6f7b91; }
+
+    .catalog-toolbar {
+      position: sticky;
+      top: 76px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 28px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: color-mix(in srgb, var(--paper) 90%, transparent);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 38px rgba(24, 35, 62, .07);
+    }
+    .search-wrap { position: relative; flex: 1; }
+    .search-wrap::before { content: "/"; position: absolute; right: 12px; top: 9px; color: var(--muted); font: 800 10px/1 ui-monospace, monospace; border: 1px solid var(--line); border-radius: 5px; padding: 3px 5px; }
+    #fileSearch {
+      width: 100%;
+      height: 40px;
+      padding: 0 46px 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      color: var(--text);
+      background: var(--bg);
+    }
+    #fileSearch:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+    #groupFilter {
+      height: 40px;
+      max-width: 210px;
+      padding: 0 32px 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .catalog-summary { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+    #catalog { margin-top: 16px; }
+    .catalog-group { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 15px; overflow: hidden; background: var(--paper); }
+    .catalog-group summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 17px;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .catalog-group summary::-webkit-details-marker { display: none; }
+    .catalog-group summary::after { content: "+"; color: var(--muted); font: 400 18px/1 ui-monospace, monospace; }
+    .catalog-group[open] summary::after { content: "−"; }
+    .group-count { margin-left: 8px; color: var(--muted); font-size: 10px; font-weight: 600; }
+    .file-list { border-top: 1px solid var(--line); }
+    .file-row {
+      display: grid;
+      grid-template-columns: minmax(250px, .85fr) 1.7fr auto;
+      gap: 18px;
+      align-items: start;
+      padding: 13px 17px;
+      border-bottom: 1px solid var(--line);
+    }
+    .file-row:last-child { border: 0; }
+    .file-row:hover { background: var(--paper-2); }
+    .file-path { overflow-wrap: anywhere; color: var(--text); font: 700 11px/1.55 ui-monospace, monospace; }
+    .file-desc { color: var(--muted); font-size: 12px; }
+    .file-type { color: var(--brand-2); font: 800 9px/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .empty { padding: 48px; color: var(--muted); text-align: center; }
+
+    .deps { margin-top: 26px; }
+    .dep-card { padding: 18px; }
+    .dep-card code { color: var(--brand); font-size: 13px; font-weight: 800; }
+    .dep-card p { margin-top: 7px; color: var(--muted); font-size: 11px; }
+
+    .callout {
+      margin-top: 24px;
+      padding: 18px 20px;
+      border: 1px solid color-mix(in srgb, var(--brand-2) 45%, var(--line));
+      border-left: 4px solid var(--brand-2);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--brand-2) 7%, var(--paper));
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .callout b { color: var(--text); }
+    .footer {
+      margin-top: 90px;
+      padding: 28px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 1080px) {
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .stat:nth-child(3) { border-right: 0; }
+      .stat:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
+      .tab-panel { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 820px) {
+      .sidebar { transform: translateX(-100%); transition: transform .22s ease; }
+      body.menu-open .sidebar { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,.3); }
+      .topbar { left: 0; padding: 0 16px; }
+      .mobile-menu { display: inline-grid; }
+      main { margin-left: 0; }
+      .content { width: min(100% - 32px, 1180px); }
+      .hero { min-height: auto; }
+      .hero-copy { padding-top: 78px; }
+      .grid-3, .arch-row { grid-template-columns: 1fr; }
+      .catalog-toolbar { align-items: stretch; flex-wrap: wrap; }
+      .search-wrap { flex-basis: 100%; }
+      #groupFilter { flex: 1; max-width: none; }
+      .file-row { grid-template-columns: 1fr; gap: 5px; }
+      .file-type { grid-row: 1; justify-self: end; }
+      .file-path { grid-row: 1; }
+    }
+    @media (max-width: 560px) {
+      .section { padding-top: 62px; }
+      .grid-2, .grid-4, .stats { grid-template-columns: 1fr; }
+      .stat { border-right: 0; border-bottom: 1px solid var(--line); }
+      .stat:last-child { border-bottom: 0; }
+      h1 { font-size: 38px; word-break: break-all; overflow-wrap: anywhere; }
+      .hero-summary { font-size: 16px; }
+      .architecture { padding: 14px; }
+      .crumbs span { display: none; }
+      .catalog-summary { width: 100%; }
+      .footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar" aria-label="文档目录">
+    <a class="brand" href="#overview">
+      <span class="brand-mark">M</span>
+      <span><strong>LuxCode</strong><small>architecture wiki</small></span>
+    </a>
+    <div class="side-meta"><b>v0.2.0</b> · Python ≥ 3.11<br>源码快照：2026-07-23</div>
+    <div class="nav-label">Contents</div>
+    <nav class="nav">
+      <a href="#overview"><span class="nav-index">01</span>项目总览</a>
+      <a href="#architecture"><span class="nav-index">02</span>系统架构</a>
+      <a href="#lifecycle"><span class="nav-index">03</span>请求生命周期</a>
+      <a href="#implementation"><span class="nav-index">04</span>核心实现</a>
+      <a href="#structure"><span class="nav-index">05</span>目录结构</a>
+      <a href="#catalog"><span class="nav-index">06</span>完整文件索引</a>
+      <a href="#runtime"><span class="nav-index">07</span>运行与依赖</a>
+    </nav>
+    <div class="side-footer">基于当前仓库源码静态分析生成<br>单文件 · 离线可用</div>
+  </aside>
+
+  <header class="topbar">
+    <div class="top-actions">
+      <button class="icon-button mobile-menu" id="menuButton" aria-label="打开目录">☰</button>
+      <div class="crumbs"><b>LuxCode</b><span>/</span><span>Code Wiki</span></div>
+    </div>
+    <div class="top-actions">
+      <a class="icon-button" href="#catalog" aria-label="搜索文件" title="搜索文件">⌕</a>
+      <button class="icon-button" id="themeButton" aria-label="切换深浅主题" title="切换主题">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="overview">
+      <div class="content hero-copy">
+        <span class="eyebrow">Terminal AI coding assistant</span>
+        <h1>把模型接入终端，<br>再给它<span>工具、边界与记忆</span>。</h1>
+        <p class="hero-summary">LuxCode 是一个 Python 编写的 AI 编程助手。它将 Anthropic、OpenAI 与兼容接口统一为流式 Agent 运行时，让模型能够读写代码、执行命令、调用 MCP/Skills、拆分子任务，并在权限、沙箱、会话恢复和上下文压缩机制下持续工作。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#architecture">查看系统架构 <span>→</span></a>
+          <a class="button" href="#catalog">浏览全部文件</a>
+        </div>
+        <div class="stats" aria-label="项目统计">
+          <div class="stat"><strong>0.2.0</strong><span>当前项目版本</span></div>
+          <div class="stat"><strong>190</strong><span>非 IDE 工程文件</span></div>
+          <div class="stat"><strong>21.6k</strong><span>核心 Python 行数</span></div>
+          <div class="stat"><strong>24</strong><span>测试与验证文件</span></div>
+          <div class="stat"><strong>3</strong><span>交互入口形态</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="content">
+      <section class="section" aria-labelledby="purpose-title">
+        <span class="eyebrow">What it does</span>
+        <h2 id="purpose-title">它不是聊天壳，而是一套 Agent 运行时</h2>
+        <p class="section-lead">LuxCode 的核心价值在于把“模型回复”扩展成可循环执行的工程过程：理解工作区、选择工具、接受权限裁决、并发执行、回填结果，然后继续推理，直到任务完成。</p>
+        <div class="grid-4 feature-grid">
+          <article class="card feature-card"><span class="feature-number">01</span><h3>代码工作台</h3><p>内置读取、写入、精确编辑、Glob、Grep、Bash 与 diff 预览，文件状态缓存避免在旧内容上误改。</p><div class="tag-row"><span class="tag">tools/</span><span class="tag">filehistory/</span></div></article>
+          <article class="card feature-card"><span class="feature-number">02</span><h3>多模型协议</h3><p>内部使用统一消息模型，再分别序列化到 Anthropic Messages、OpenAI Responses 和 OpenAI-compatible Chat Completions。</p><div class="tag-row"><span class="tag">client.py</span><span class="tag">serialization.py</span></div></article>
+          <article class="card feature-card"><span class="feature-number">03</span><h3>持续上下文</h3><p>工具大结果先落盘替换，接近窗口上限再由模型摘要压缩，并附带最近文件与 Skill 快照恢复工作状态。</p><div class="tag-row"><span class="tag">context/</span><span class="tag">memory/</span></div></article>
+          <article class="card feature-card"><span class="feature-number">04</span><h3>受控执行</h3><p>权限模式、危险命令检测、规则匹配、路径边界和操作系统沙箱形成分层防护。</p><div class="tag-row"><span class="tag">permissions/</span><span class="tag">sandbox/</span></div></article>
+          <article class="card feature-card"><span class="feature-number">05</span><h3>子 Agent 与团队</h3><p>短任务可后台派发子 Agent；复杂协作可创建团队，通过共享任务、邮箱和进度树长期配合。</p><div class="tag-row"><span class="tag">agents/</span><span class="tag">teams/</span></div></article>
+          <article class="card feature-card"><span class="feature-number">06</span><h3>可扩展能力</h3><p>Skills 以 Markdown 声明工作流，MCP 将外部服务器工具包装为本地 Tool，Hooks 在生命周期节点接入动作。</p><div class="tag-row"><span class="tag">skills/</span><span class="tag">mcp/</span><span class="tag">hooks/</span></div></article>
+          <article class="card feature-card"><span class="feature-number">07</span><h3>多种界面</h3><p>默认提供 Textual TUI；支持一次性命令行输出和 NDJSON 事件流；Remote 模式提供浏览器 WebSocket UI。</p><div class="tag-row"><span class="tag">app.py</span><span class="tag">remote.py</span></div></article>
+          <article class="card feature-card"><span class="feature-number">08</span><h3>隔离开发</h3><p>基于 Git worktree 创建并行工作目录，复制本地配置、建立依赖软链、检查未推送提交并自动清理。</p><div class="tag-row"><span class="tag">worktree/</span></div></article>
+        </div>
+      </section>
+
+      <section class="section" id="architecture">
+        <span class="eyebrow">System architecture</span>
+        <h2>从输入表面到可控执行的六层架构</h2>
+        <p class="section-lead">入口只负责交互与事件展示。真正的行为由共享 Agent 核心驱动，外围模块通过明确边界协作。</p>
+        <div class="card architecture">
+          <div class="arch-row">
+            <article class="arch-node"><small>ENTRY · 01</small><strong>交互入口</strong><p>Textual TUI · CLI -p · Remote WebSocket</p></article>
+            <article class="arch-node"><small>BOOT · 02</small><strong>启动与配置</strong><p>分层 YAML · 环境变量 · Provider 与 Hook 初始化</p></article>
+            <article class="arch-node"><small>ADAPTER · 03</small><strong>模型适配</strong><p>Anthropic · OpenAI Responses · OpenAI-compatible</p></article>
+          </div>
+          <div class="arch-connector">↓　共享 Conversation / Event Stream　↓</div>
+          <div class="arch-row">
+            <article class="arch-node safety"><small>GUARD · 04</small><strong>上下文与安全</strong><p>Compact · Memory · Permission · Rules · Sandbox</p></article>
+            <article class="arch-node core"><small>CORE · 05</small><strong>Agent 事件循环</strong><p>构建提示 → 流式响应 → 工具执行 → 结果回填 → 继续迭代</p></article>
+            <article class="arch-node"><small>CAPABILITY · 06</small><strong>能力与协作</strong><p>Tools · MCP · Skills · Hooks · Agents · Teams · Worktree</p></article>
+          </div>
+          <p class="arch-caption">核心依赖方向：界面层调用 Agent；Agent 依赖抽象客户端与 ToolRegistry；具体 Provider、工具和扩展在边界处适配。</p>
+        </div>
+        <div class="grid-3 mode-grid">
+          <article class="card mode-card"><h3>终端交互</h3><p><code>luxcode</code> → <code>LuxCodeApp</code>。Textual 负责输入历史、补全、工具折叠块、权限/计划对话框、队友状态和会话恢复。</p></article>
+          <article class="card mode-card"><h3>脚本调用</h3><p><code>luxcode -p "..."</code> → <code>_run_prompt()</code>。可输出纯文本或 NDJSON；非交互模式会自动批准工具权限请求。</p></article>
+          <article class="card mode-card"><h3>远程浏览器</h3><p><code>luxcode --remote</code> → <code>RemoteServer</code>。同一端口处理 HTTP 页面与 WebSocket 事件，默认监听 <code>0.0.0.0:18888</code>。</p></article>
+        </div>
+      </section>
+
+      <section class="section" id="lifecycle">
+        <span class="eyebrow">Request lifecycle</span>
+        <h2>一次用户请求如何跑完整个闭环</h2>
+        <p class="section-lead">下面的路径对应 <code>luxcode/__main__.py</code>、<code>app.py</code> 与 <code>agent.py</code> 中的真实调用顺序。</p>
+        <div class="flow">
+          <div class="flow-item"><span class="flow-index">01</span><div class="flow-body"><h3>启动与配置合并</h3><p>读取用户级、项目级、local 级 YAML；后层覆盖前层。配置校验完成后创建 Provider、权限检查器、Hook、MCP 与运行模式。</p><span class="path">__main__.py → config.py → validator.py</span></div></div>
+          <div class="flow-item"><span class="flow-index">02</span><div class="flow-body"><h3>装配运行时</h3><p>创建模型客户端、ConversationManager、ToolRegistry、MemoryManager、AgentLoader、TaskManager、TeamManager 与 WorktreeManager。</p><span class="path">app.py / remote.py / __main__._run_prompt()</span></div></div>
+          <div class="flow-item"><span class="flow-index">03</span><div class="flow-body"><h3>构造工作上下文</h3><p>把操作系统、工作目录、Git 状态、Skills/Agents 目录、项目指令与长期记忆按优先级注入对话。</p><span class="path">prompts.py → memory/instructions.py → conversation.py</span></div></div>
+          <div class="flow-item"><span class="flow-index">04</span><div class="flow-body"><h3>控制上下文预算</h3><p>长工具输出持久化为预览；当 token 接近窗口阈值时自动总结早期对话，同时保留最近轮次与恢复附件。</p><span class="path">context/manager.py → .luxcode/tool-results/</span></div></div>
+          <div class="flow-item"><span class="flow-index">05</span><div class="flow-body"><h3>向模型流式发送</h3><p>内部消息被序列化到对应协议。流中逐步产生 Thinking、Text、ToolUse 与用量事件，界面可以立即更新。</p><span class="path">client.py → serialization.py → StreamCollector</span></div></div>
+          <div class="flow-item"><span class="flow-index">06</span><div class="flow-body"><h3>权限与工具执行</h3><p>每个调用先经过模式、危险命令、规则和路径判断。无需询问的工具在模型仍输出时就开始并发执行；需要确认的调用顺序等待用户。</p><span class="path">permissions/* → Agent._execute_tool()</span></div></div>
+          <div class="flow-item"><span class="flow-index">07</span><div class="flow-body"><h3>结果回填并继续循环</h3><p>工具结果以 provider 无关的 ToolResultBlock 加回对话。只要模型继续返回工具调用，Agent 就再次请求模型。</p><span class="path">conversation.py → agent.py: Agent.run()</span></div></div>
+          <div class="flow-item"><span class="flow-index">08</span><div class="flow-body"><h3>完成、持久化与后台维护</h3><p>没有工具调用时结束本轮，保存会话/文件快照，按间隔提取记忆，并在后台尝试合并旧会话记忆。</p><span class="path">memory/session.py · auto_memory.py · consolidation.py</span></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="implementation">
+        <span class="eyebrow">Implementation deep dive</span>
+        <h2>关键功能是怎么实现的</h2>
+        <p class="section-lead">切换主题查看每条主干机制。右侧代码是为了表达结构而整理的等价伪代码，文件路径指向真实实现。</p>
+        <div class="tabs">
+          <div class="tab-list" role="tablist">
+            <button class="tab-button active" data-tab="agent">Agent 循环</button>
+            <button class="tab-button" data-tab="context">上下文与记忆</button>
+            <button class="tab-button" data-tab="security">权限与沙箱</button>
+            <button class="tab-button" data-tab="team">子 Agent / 团队</button>
+            <button class="tab-button" data-tab="extensions">扩展系统</button>
+            <button class="tab-button" data-tab="interface">界面与事件</button>
+          </div>
+
+          <div class="tab-panel active" data-panel="agent">
+            <article class="card detail-card"><h3>事件驱动、流式并发、直到完成</h3><ul><li><b>StreamCollector</b> 把供应商流统一成文本、思考与完整工具调用。</li><li><b>StreamingExecutor</b> 一收到完整工具参数就提交异步任务，让工具运行与剩余模型输出重叠。</li><li>权限结果为 <code>ask</code> 的调用暂存，流结束后逐个弹窗，避免多个交互请求互相覆盖。</li><li>遇到 <code>max_tokens</code> 会先提高输出上限，再通过续写消息进行有限次恢复。</li><li>模型不再调用工具时触发 <code>LoopComplete</code>，否则结果回填后进入下一轮。</li></ul><span class="path">luxcode/agent.py</span></article>
+            <article class="card code-card"><div class="code-head"><span>agent.py · simplified</span><span>async iterator</span></div><pre><span class="kw">while</span> <span class="kw">True</span>:
+  inject_environment_and_memory()
+  apply_tool_result_budget()
+  <span class="kw">await</span> auto_compact_if_needed()
+
+  stream = client.<span class="fn">stream</span>(conversation, tools)
+  <span class="kw">async for</span> event <span class="kw">in</span> collect(stream):
+    <span class="kw">if</span> event.is_tool_use:
+      executor.<span class="fn">submit</span>(execute_tool(event))
+    <span class="kw">yield</span> event
+
+  <span class="kw">if not</span> response.tool_calls:
+    <span class="kw">yield</span> LoopComplete(); <span class="kw">break</span>
+  conversation.<span class="fn">add_tool_results</span>(results)</pre></article>
+          </div>
+
+          <div class="tab-panel" data-panel="context">
+            <article class="card detail-card"><h3>两层压缩 + 两类长期信息</h3><ul><li><b>Layer 1</b>：超预算的工具输出写入会话目录，原位置替换为短预览和文件地址。</li><li><b>Layer 2</b>：依据 Provider 的 context window 动态计算阈值，把较早轮次总结为 CompactBoundary。</li><li><b>RecoveryState</b> 记录最近读取的文件与激活的 Skill，摘要后追加恢复附件，降低“压缩失忆”。</li><li><b>MemoryManager</b> 维护用户级和项目级记忆；Recall 在主 LLM 调用旁路预取相关记忆。</li><li><b>SessionManager</b> 使用 JSONL 追加消息，并可验证工具调用/结果链后恢复会话。</li></ul><span class="path">context/manager.py · memory/* · conversation.py</span></article>
+            <article class="card code-card"><div class="code-head"><span>context pipeline</span><span>budget aware</span></div><pre>current_tokens = api_usage_anchor
+                + estimate(new_messages)
+
+<span class="kw">if</span> tool_result &gt; result_budget:
+  path = <span class="fn">persist_tool_result</span>(content)
+  content = <span class="fn">make_persisted_preview</span>(path)
+
+<span class="kw">if</span> current_tokens &gt; compact_threshold:
+  summary = <span class="kw">await</span> llm.<span class="fn">summarize</span>(old_turns)
+  keep = recent_complete_turns
+  recovery = files + skills
+  conversation.<span class="fn">replace_history</span>(summary + keep)</pre></article>
+          </div>
+
+          <div class="tab-panel" data-panel="security">
+            <article class="card detail-card"><h3>从策略判断到内核隔离</h3><ul><li><b>PermissionMode</b> 先给出按工具类别的默认策略，例如 default、accept-edits、plan。</li><li><b>DangerousCommandDetector</b> 分析 shell 命令，识别高风险形式；<b>RuleEngine</b> 从三层 permissions YAML 匹配 allow/deny/ask。</li><li><b>PathSandbox</b> 限制文件路径与工作区边界，并允许 plan 模式唯一写入计划文件。</li><li><b>Sandbox</b> 是更底层的可选执行包装：macOS 使用 Seatbelt，Linux 使用 bubblewrap。</li><li>Windows 当前没有 OS 级实现，会退化为权限与路径层防护。</li></ul><span class="path">permissions/* · sandbox/* · tools/bash.py</span></article>
+            <article class="card code-card"><div class="code-head"><span>permission decision</span><span>layered guard</span></div><pre>decision = <span class="fn">mode_decide</span>(mode, tool.category)
+decision = dangerous_command.<span class="fn">refine</span>(decision)
+decision = rules.<span class="fn">match</span>(tool, arguments, decision)
+decision = path_sandbox.<span class="fn">check</span>(paths, decision)
+
+<span class="kw">match</span> decision.effect:
+  <span class="kw">case</span> <span class="st">"allow"</span>: execute()
+  <span class="kw">case</span> <span class="st">"ask"</span>:   <span class="kw">await</span> user_choice()
+  <span class="kw">case</span> <span class="st">"deny"</span>:  return_error()</pre></article>
+          </div>
+
+          <div class="tab-panel" data-panel="team">
+            <article class="card detail-card"><h3>两种并发抽象，各自解决不同问题</h3><ul><li><b>AgentTool</b> 解析 Agent Markdown 定义、选择模型与工具集合，可 fork 当前对话，也可在临时 worktree 中运行。</li><li><b>TaskManager</b> 管理后台任务状态与通知；<b>TraceManager</b> 保存父子执行树。</li><li><b>TeamManager</b> 管理长期成员、共享任务和邮箱，可选 in-process、tmux 或 iTerm2 后端。</li><li><b>Coordinator mode</b> 会过滤 Lead 的写工具，让 Lead 只分解与调度、由队友执行。</li><li><b>TeammateProgress</b> 将工具活动汇总给 TUI 中的实时队友树。</li></ul><span class="path">agents/* · tools/agent_tool.py · teams/*</span></article>
+            <article class="card code-card"><div class="code-head"><span>collaboration topology</span><span>shared state</span></div><pre>Lead Agent
+  ├─ AgentTool → BackgroundTask → Sub-agent
+  │                              └─ optional worktree
+  └─ TeamManager
+       ├─ SharedTaskStore
+       ├─ Mailbox (lead ↔ teammate)
+       ├─ InProcessTeammateHandle
+       └─ tmux / iTerm2 pane
+
+completion → notification queue → lead conversation</pre></article>
+          </div>
+
+          <div class="tab-panel" data-panel="extensions">
+            <article class="card detail-card"><h3>工具、MCP、Skills 与 Hooks 共用边界</h3><ul><li><b>ToolRegistry</b> 统一注册、禁用和按协议导出 schema；deferred 工具先不进入上下文，由 ToolSearch 按需发现。</li><li><b>MCPManager</b> 连接多个 stdio/HTTP 服务器，把远程 schema 动态包装为 Pydantic Tool。</li><li><b>SkillLoader</b> 扫描用户级与项目级 SKILL.md，<b>SkillExecutor</b> 参数替换后激活到环境上下文。</li><li><b>HookEngine</b> 在 session/turn/tool 等生命周期事件上运行 command、prompt、HTTP 或 agent 动作。</li><li>所有能力最终都通过标准 ToolResult 或 system reminder 回到 Agent 对话。</li></ul><span class="path">tools/__init__.py · mcp/* · skills/* · hooks/*</span></article>
+            <article class="card code-card"><div class="code-head"><span>capability adapters</span><span>one registry</span></div><pre>registry.<span class="fn">register</span>(ReadFile())
+registry.<span class="fn">register</span>(Bash())
+
+<span class="kw">for</span> mcp_tool <span class="kw">in</span> server.<span class="fn">list_tools</span>():
+  registry.<span class="fn">register</span>(MCPToolWrapper(mcp_tool))
+
+<span class="kw">if</span> tool.should_defer:
+  hide_schema_until_tool_search()
+
+hooks.<span class="fn">run_hooks</span>(<span class="st">"pre_tool"</span>, context)</pre></article>
+          </div>
+
+          <div class="tab-panel" data-panel="interface">
+            <article class="card detail-card"><h3>同一事件流，三种消费方式</h3><ul><li><b>LuxCodeApp</b> 监听 AgentEvent，增量渲染文本、thinking、工具块、用量、权限请求与压缩通知。</li><li><b>ChatInput</b> 实现历史记录、Slash 补全与 <code>@file</code> 引用展开；命令经 CommandRegistry 分发。</li><li><b>RemoteServer</b> 把同一批事件转成 JSON WebSocket 消息；内嵌 HTML 完成 Markdown、折叠工具块和权限交互。</li><li><b>-p stream-json</b> 把事件输出成 NDJSON，便于脚本或上层应用消费。</li><li><b>NoAltScreenDriver</b> 去掉备用屏切换码，使 TUI 历史保留在终端 scrollback。</li></ul><span class="path">app.py · remote.py · web_content.py · driver.py</span></article>
+            <article class="card code-card"><div class="code-head"><span>event consumers</span><span>same Agent.run()</span></div><pre><span class="kw">async for</span> event <span class="kw">in</span> agent.<span class="fn">run</span>(conversation):
+  <span class="kw">if</span> tui:
+    widgets.<span class="fn">update</span>(event)
+  <span class="kw">elif</span> remote:
+    websocket.<span class="fn">broadcast</span>(to_json(event))
+  <span class="kw">elif</span> stream_json:
+    stdout.<span class="fn">write</span>(ndjson(event))
+  <span class="kw">else</span>:
+    stdout.<span class="fn">write</span>(event.text)</pre></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="structure">
+        <span class="eyebrow">Code organization</span>
+        <h2>目录按能力边界组织</h2>
+        <p class="section-lead">根包放启动、UI、协议与 Agent 主干；子包分别承载可独立理解和测试的横切能力。</p>
+        <div class="grid-3 module-grid">
+          <article class="card module-card" data-count="入口"><code>luxcode/*.py</code><h3>运行主干</h3><p>启动、TUI、远程模式、模型客户端、对话模型、协议序列化、系统提示和配置校验。</p><div class="mini">__main__ · agent · app · client · remote</div></article>
+          <article class="card module-card" data-count="9 files"><code>luxcode/agents/</code><h3>子 Agent</h3><p>声明解析、发现加载、工具过滤、fork 上下文、后台任务、通知与 trace 树。</p><div class="mini">parser · loader · fork · task_manager</div></article>
+          <article class="card module-card" data-count="23 files"><code>luxcode/commands/</code><h3>Slash 命令</h3><p>命令注册、解析、补全与各内建处理器；支持从用户和项目目录加载 Markdown 命令。</p><div class="mini">registry · parser · loader · handlers</div></article>
+          <article class="card module-card" data-count="2 files"><code>luxcode/context/</code><h3>上下文预算</h3><p>工具结果落盘、token 阈值、自动压缩、使用量锚点、恢复快照与熔断保护。</p><div class="mini">manager.py</div></article>
+          <article class="card module-card" data-count="6 files"><code>luxcode/memory/</code><h3>记忆与会话</h3><p>项目指令、长期记忆、相关记忆召回、会话 JSONL、摘要与后台 consolidation。</p><div class="mini">auto_memory · recall · session</div></article>
+          <article class="card module-card" data-count="6 files"><code>luxcode/permissions/</code><h3>权限策略</h3><p>权限模式、规则文件、危险命令判定、文件路径边界和最终 Decision。</p><div class="mini">checker · dangerous · rules · sandbox</div></article>
+          <article class="card module-card" data-count="27 files"><code>luxcode/tools/</code><h3>工具层</h3><p>Tool 抽象、Registry、文件/命令工具、Agent/Team/Task 工具以及延迟工具发现。</p><div class="mini">base · file tools · agent_tool · team tools</div></article>
+          <article class="card module-card" data-count="13 files"><code>luxcode/teams/</code><h3>多 Agent 团队</h3><p>团队模型、邮箱、共享任务、进度、协调者模式和三类运行后端。</p><div class="mini">manager · mailbox · shared_task · spawn_*</div></article>
+          <article class="card module-card" data-count="9 files"><code>luxcode/worktree/</code><h3>Git 隔离工作区</h3><p>创建/进入/退出 worktree，复制本地配置，检查变更与未推送提交，定时清理。</p><div class="mini">manager · setup · changes · cleanup</div></article>
+          <article class="card module-card" data-count="7 files"><code>luxcode/hooks/</code><h3>生命周期 Hook</h3><p>解析条件和动作，在 Session、Turn 与 Tool 生命周期上执行命令、Prompt、HTTP 或 Agent。</p><div class="mini">engine · events · conditions · executors</div></article>
+          <article class="card module-card" data-count="4 files"><code>luxcode/mcp/</code><h3>MCP 集成</h3><p>管理 stdio/HTTP 连接、服务器状态，并将 MCP JSON Schema 转成动态 Pydantic 工具。</p><div class="mini">client · manager · tool_wrapper</div></article>
+          <article class="card module-card" data-count="6 files"><code>luxcode/skills/</code><h3>Skill 系统</h3><p>解析和加载 SKILL.md，执行参数替换，从 GitHub 地址递归安装 Skill 包。</p><div class="mini">parser · loader · executor · install</div></article>
+          <article class="card module-card" data-count="3 files"><code>luxcode/sandbox/</code><h3>OS 沙箱</h3><p>平台抽象以及 macOS Seatbelt、Linux bubblewrap 两种强制隔离实现。</p><div class="mini">seatbelt · bwrap</div></article>
+          <article class="card module-card" data-count="2 files"><code>luxcode/filehistory/</code><h3>文件历史</h3><p>写操作前保存备份，并按对话位置生成快照，支持 rewind 回滚。</p><div class="mini">history.py</div></article>
+          <article class="card module-card" data-count="24 files"><code>tests/</code><h3>测试体系</h3><p>围绕 Agent、上下文、记忆、权限、MCP、Skills、团队和 worktree 的单元与集成测试。</p><div class="mini">pytest · pytest-asyncio</div></article>
+        </div>
+
+        <div class="card tree-card">
+          <div class="tree-top"><strong>项目结构树</strong><span>省略缓存与 IDE 元数据</span></div>
+          <pre><span class="tree-dir">luxcode/</span>
+├── pyproject.toml                 <span class="tree-note"># 包元数据、依赖、CLI 入口</span>
+├── uv.lock                       <span class="tree-note"># 可复现依赖锁定</span>
+├── LUXCODE.md                    <span class="tree-note"># 项目级开发指令</span>
+├── luxcode-wiki.html             <span class="tree-note"># 本架构 Wiki</span>
+├── <span class="tree-dir">.luxcode/</span>
+│   ├── config.yaml.example       <span class="tree-note"># Provider / MCP 配置示例</span>
+│   └── <span class="tree-dir">skills/</span>                 <span class="tree-note"># 项目内置 Skill 资产</span>
+├── <span class="tree-dir">luxcode/</span>
+│   ├── __main__.py               <span class="tree-note"># CLI 启动与模式分流</span>
+│   ├── agent.py                  <span class="tree-note"># 核心 Agent 事件循环</span>
+│   ├── app.py                    <span class="tree-note"># Textual TUI</span>
+│   ├── client.py                 <span class="tree-note"># LLM Provider 适配</span>
+│   ├── remote.py / web_content.py<span class="tree-note"># WebSocket + 浏览器界面</span>
+│   ├── conversation.py           <span class="tree-note"># Provider 无关消息模型</span>
+│   ├── serialization.py          <span class="tree-note"># 三类协议序列化</span>
+│   ├── config.py / validator.py  <span class="tree-note"># 配置模型与校验</span>
+│   ├── <span class="tree-dir">agents/ commands/ context/ filehistory/</span>
+│   ├── <span class="tree-dir">hooks/ mcp/ memory/ permissions/ sandbox/</span>
+│   └── <span class="tree-dir">skills/ teams/ tools/ worktree/</span>
+└── <span class="tree-dir">tests/</span>                        <span class="tree-note"># 24 个测试/验证文件</span></pre>
+        </div>
+      </section>
+
+      <section class="section" id="catalog-section">
+        <span class="eyebrow">File by file</span>
+        <h2>完整文件索引</h2>
+        <p class="section-lead">覆盖当前仓库除 IDE 元数据外的全部文件。搜索支持路径、职责和分类；按 <kbd>/</kbd> 可直接聚焦。</p>
+        <div class="catalog-toolbar">
+          <div class="search-wrap"><input id="fileSearch" type="search" placeholder="搜索文件路径或功能，例如 compact、权限、MCP…" autocomplete="off"></div>
+          <select id="groupFilter" aria-label="按模块筛选"><option value="">全部模块</option></select>
+          <span class="catalog-summary" id="catalogSummary">正在构建索引…</span>
+        </div>
+        <div id="catalog" aria-live="polite"></div>
+      </section>
+
+      <section class="section" id="runtime">
+        <span class="eyebrow">Runtime & dependencies</span>
+        <h2>如何启动，以及依赖为什么存在</h2>
+        <div class="grid-3 deps">
+          <article class="card dep-card"><code>textual ≥ 2.1</code><p>终端 UI 框架，负责组件、事件、样式与平台 Driver。</p></article>
+          <article class="card dep-card"><code>anthropic ≥ 0.42</code><p>Anthropic Messages API 的异步流式客户端。</p></article>
+          <article class="card dep-card"><code>openai ≥ 1.60</code><p>OpenAI Responses API 与兼容服务的客户端基础。</p></article>
+          <article class="card dep-card"><code>pydantic ≥ 2.0</code><p>工具参数模型、JSON Schema 和运行时校验。</p></article>
+          <article class="card dep-card"><code>mcp ≥ 1.12</code><p>Model Context Protocol 的 stdio 与 HTTP 会话。</p></article>
+          <article class="card dep-card"><code>httpx ≥ 0.27</code><p>HTTP 请求，用于 Skill 安装、Hook 与相关远端能力。</p></article>
+          <article class="card dep-card"><code>websockets ≥ 14</code><p>Remote 模式的浏览器双向事件通道。</p></article>
+          <article class="card dep-card"><code>PyYAML ≥ 6.0</code><p>配置、权限规则和前置元数据读取。</p></article>
+          <article class="card dep-card"><code>pytest + asyncio</code><p>异步 Agent、工具、MCP、团队与存储逻辑的测试。</p></article>
+        </div>
+        <div class="grid-3 mode-grid">
+          <article class="card mode-card"><h3>1. 准备配置</h3><p>复制 <code>.luxcode/config.yaml.example</code> 为 <code>.luxcode/config.yaml</code>，填写 Provider、模型和 API Key。</p></article>
+          <article class="card mode-card"><h3>2. 交互运行</h3><p><code>uv run luxcode</code> 启动终端界面；也可用 <code>uv run luxcode -p "解释这个项目"</code>。</p></article>
+          <article class="card mode-card"><h3>3. 远程运行</h3><p><code>uv run luxcode --remote</code> 启动浏览器模式，然后访问本机 <code>18888</code> 端口。</p></article>
+        </div>
+        <div class="callout"><b>阅读建议：</b>第一次读源码可以按 <code>__main__.py → app.py → agent.py → conversation.py → client.py → tools/__init__.py</code> 的顺序建立主干，再根据兴趣进入 context、permissions、memory、agents/teams 或 MCP/Skills。</div>
+      </section>
+
+      <footer class="footer"><span>LuxCode Code Wiki · 当前仓库静态分析</span><span>Built as a self-contained HTML page · no external assets</span></footer>
+    </div>
+  </main>
+
+  <script>
+    const files = [
+      // 根目录与项目配置
+      ['项目配置','.gitignore','Git 忽略规则，排除 Python 缓存、虚拟环境、构建产物以及 LuxCode 运行时生成文件。','config'],
+      ['项目配置','LUXCODE.md','项目级指令入口，声明 Python 技术栈、英文提交信息和 snake_case 命名约定。','docs'],
+      ['项目配置','pyproject.toml','定义 luxcode 0.2.0 包、Python 版本、运行/开发依赖、Hatch 构建和 luxcode CLI 入口。','config'],
+      ['项目配置','uv.lock','uv 生成的完整依赖锁文件，用于在不同环境中安装一致的依赖版本。','lock'],
+      ['项目配置','luxcode-wiki.html','自包含的项目架构 Wiki，提供架构总览、实现解读、目录地图、全文文件索引和交互筛选。','html'],
+      ['项目配置','.luxcode/config.yaml.example','Provider、模型、权限模式、MCP 服务器和协调者模式的项目配置示例。','yaml'],
+
+      // 项目级 Skills
+      ['项目 Skills','.luxcode/skills/frontend-design/SKILL.md','前端设计 Skill 指令，指导 Agent 生成有明确视觉取向、可用且精致的界面。','skill'],
+      ['项目 Skills','.luxcode/skills/frontend-design/LICENSE.txt','frontend-design Skill 的授权文本。','license'],
+      ['项目 Skills','.luxcode/skills/skill-creator/SKILL.md','完整的 Skill 创建与评测工作流，包括需求澄清、基线、迭代、盲比和描述优化。','skill'],
+      ['项目 Skills','.luxcode/skills/skill-creator/LICENSE.txt','skill-creator Skill 的授权文本。','license'],
+      ['项目 Skills','.luxcode/skills/skill-creator/agents/analyzer.md','分析评测运行记录，定位 Skill 指令与实际行为之间偏差的专用 Agent 定义。','agent'],
+      ['项目 Skills','.luxcode/skills/skill-creator/agents/comparator.md','对两个匿名结果做盲比较并解释优劣的专用 Agent 定义。','agent'],
+      ['项目 Skills','.luxcode/skills/skill-creator/agents/grader.md','依据 rubric 对 Skill 运行结果逐项评分的专用 Agent 定义。','agent'],
+      ['项目 Skills','.luxcode/skills/skill-creator/assets/eval_review.html','评测结果审阅页面模板，用于人工查看输出、评分与反馈。','html'],
+      ['项目 Skills','.luxcode/skills/skill-creator/eval-viewer/generate_review.py','把评测产物整理成可在浏览器中查看的 review 数据与页面。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/eval-viewer/viewer.html','交互式评测查看器前端，支持样例切换、对比、评分和反馈记录。','html'],
+      ['项目 Skills','.luxcode/skills/skill-creator/references/schemas.md','记录 Skill 评测、benchmark 与 comparison 产物使用的数据结构。','reference'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/__init__.py','skill-creator 脚本包标记。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/aggregate_benchmark.py','汇总多轮评分与 token/耗时数据，生成 benchmark 统计。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/generate_report.py','把评测和比较结果生成面向阅读者的报告。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/improve_description.py','根据触发评测结果优化 Skill 描述，提高应触发/不应触发的区分度。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/package_skill.py','校验并把 Skill 目录打包成可分发产物。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/quick_validate.py','对 SKILL.md 元数据、命名和目录结构执行快速校验。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/run_eval.py','按评测集运行 Skill 与基线任务并保存结构化结果。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/run_loop.py','编排创建、评测、分析和迭代改进的循环。','python'],
+      ['项目 Skills','.luxcode/skills/skill-creator/scripts/utils.py','skill-creator 多个脚本共用的文件、数据和辅助函数。','python'],
+
+      // 核心根模块
+      ['核心运行时','luxcode/__init__.py','Python 包标记；当前不导出运行时 API。','python'],
+      ['核心运行时','luxcode/__main__.py','CLI 入口：解析模式、加载配置与 Hook，并分流到 TUI、非交互或 Remote；非交互模式在这里装配完整运行时。','python'],
+      ['核心运行时','luxcode/agent.py','系统核心：定义 Agent 事件、流收集器、并行工具执行器、权限请求、自动压缩、记忆提取和循环控制。','python'],
+      ['核心运行时','luxcode/app.py','Textual TUI 主应用：装配 Agent 与扩展，处理输入/命令/会话，渲染流式文本、工具块、对话框和队友进度。','python'],
+      ['核心运行时','luxcode/askuser_dialog.py','AskUser 工具的内联问答控件，处理单选、多选、文本补充和键盘导航。','python'],
+      ['核心运行时','luxcode/client.py','LLM 抽象及 Anthropic、OpenAI Responses、OpenAI-compatible 三种流式客户端，含错误归一化和上下文窗口探测。','python'],
+      ['核心运行时','luxcode/config.py','配置 dataclass、环境变量展开、三层配置加载/合并，以及 Provider 的 context window 四级回退。','python'],
+      ['核心运行时','luxcode/conversation.py','Provider 无关的 Message/ToolUse/ToolResult/Thinking 数据模型，维护历史、系统提醒和真实用量锚点。','python'],
+      ['核心运行时','luxcode/driver.py','Textual 自定义 Driver，移除 alternate screen 控制码，让历史输出保留在终端滚动区。','python'],
+      ['核心运行时','luxcode/permission_dialog.py','TUI 内联权限确认控件，向用户提供允许、拒绝和记住规则等选择。','python'],
+      ['核心运行时','luxcode/plan_dialog.py','计划完成后的内联审批控件，返回接受、继续修改或退出等 PlanChoice。','python'],
+      ['核心运行时','luxcode/prompts.py','按优先级组合身份、任务、安全、工具、风格、环境、计划模式和协调者模式等系统提示段。','python'],
+      ['核心运行时','luxcode/remote.py','Remote 模式服务器：同端口响应页面与 WebSocket，装配 Agent、广播事件并处理命令/权限回应。','python'],
+      ['核心运行时','luxcode/serialization.py','把内部 Conversation 消息序列化为 Anthropic、OpenAI Responses 或 Chat Completions 格式。','python'],
+      ['核心运行时','luxcode/session_dialog.py','列出历史 Session 并展示时间、大小等信息的 TUI 恢复对话框。','python'],
+      ['核心运行时','luxcode/styles.tcss','Textual 应用样式，定义聊天区、输入框、状态栏、弹窗、工具块和队友树外观。','css'],
+      ['核心运行时','luxcode/teammate_tree.py','TUI 队友进度树组件，把 TeamManager 的成员状态和最新工具活动渲染到界面。','python'],
+      ['核心运行时','luxcode/validator.py','对 Provider、MCP、Hook、worktree、权限和 sandbox 配置做结构校验并补齐默认值。','python'],
+      ['核心运行时','luxcode/web_content.py','Remote 模式内嵌的完整 HTML/CSS/JS，负责聊天、Markdown、工具折叠、thinking、权限和 Slash 菜单。','python'],
+
+      // agents
+      ['子 Agent','luxcode/agents/__init__.py','汇总并导出 Agent 定义、加载、fork、trace、任务和通知 API。','python'],
+      ['子 Agent','luxcode/agents/builtins/__init__.py','内置 Agent 定义目录的包标记。','python'],
+      ['子 Agent','luxcode/agents/builtins/explore.md','只读代码探索 Agent 的前置元数据、工具范围与行为提示。','agent'],
+      ['子 Agent','luxcode/agents/builtins/general-purpose.md','通用子 Agent 定义，可处理独立的多步骤工程任务。','agent'],
+      ['子 Agent','luxcode/agents/builtins/plan.md','方案设计 Agent 定义，聚焦理解代码、权衡并输出实现计划。','agent'],
+      ['子 Agent','luxcode/agents/builtins/verification.md','验证 Agent 定义，负责检查实现、运行测试并报告证据。','agent'],
+      ['子 Agent','luxcode/agents/fork.py','从父 Conversation 构造 fork 消息，按 all、none 或最近 N 轮复制上下文并校验工具配对。','python'],
+      ['子 Agent','luxcode/agents/loader.py','扫描内置、用户和项目 Agent Markdown，按名称覆盖并生成目录。','python'],
+      ['子 Agent','luxcode/agents/notification.py','把完成的 BackgroundTask 格式化为 system reminder 并注入父对话。','python'],
+      ['子 Agent','luxcode/agents/parser.py','解析 Agent Markdown frontmatter，校验名称、描述、工具和模型等元数据。','python'],
+      ['子 Agent','luxcode/agents/task_manager.py','创建、跟踪、取消后台异步任务，维护状态、进度、结果与完成通知队列。','python'],
+      ['子 Agent','luxcode/agents/tool_filter.py','按 Agent 声明构造工具子集，处理 MCP 通配、fork 克隆、teammate 和 coordinator 工具过滤。','python'],
+      ['子 Agent','luxcode/agents/trace.py','保存父子 Agent 的 TraceNode，记录状态、时间和输出并支持树形查询。','python'],
+
+      // commands
+      ['Slash 命令','luxcode/commands/__init__.py','导出命令注册、解析、补全与用户命令加载接口。','python'],
+      ['Slash 命令','luxcode/commands/completion.py','Slash 命令与 @file 候选的浮层列表组件。','python'],
+      ['Slash 命令','luxcode/commands/handlers/__init__.py','汇集基础内建命令并注册到 CommandRegistry。','python'],
+      ['Slash 命令','luxcode/commands/handlers/clear.py','实现 /clear：清空当前对话和 UI 状态。','python'],
+      ['Slash 命令','luxcode/commands/handlers/compact.py','实现 /compact：手动触发上下文摘要压缩并更新会话边界。','python'],
+      ['Slash 命令','luxcode/commands/handlers/help.py','实现 /help：列出命令、别名和说明。','python'],
+      ['Slash 命令','luxcode/commands/handlers/mcp.py','实现 /mcp：显示 MCP 服务器连接状态和已加载工具。','python'],
+      ['Slash 命令','luxcode/commands/handlers/memory.py','实现 /memory：查看或管理自动记忆状态。','python'],
+      ['Slash 命令','luxcode/commands/handlers/permission.py','实现 /permission：查看、切换权限模式并解释各模式。','python'],
+      ['Slash 命令','luxcode/commands/handlers/plan.py','实现 /plan：进入或退出计划权限模式。','python'],
+      ['Slash 命令','luxcode/commands/handlers/review.py','实现代码审查命令，把 review 请求作为用户任务交给 Agent。','python'],
+      ['Slash 命令','luxcode/commands/handlers/rewind.py','实现 /rewind：列出文件快照并恢复到指定对话节点。','python'],
+      ['Slash 命令','luxcode/commands/handlers/sandbox.py','实现 /sandbox：显示、启用或关闭 OS 级 Bash 沙箱及自动放行选项。','python'],
+      ['Slash 命令','luxcode/commands/handlers/session.py','实现 /session：列出、恢复或删除持久化会话。','python'],
+      ['Slash 命令','luxcode/commands/handlers/skill.py','实现 /skill：列出、查看和重载 Skill。','python'],
+      ['Slash 命令','luxcode/commands/handlers/skill_register.py','注册 Skill 触发命令，把每个 Skill 暴露为可直接调用的 Slash 命令。','python'],
+      ['Slash 命令','luxcode/commands/handlers/status.py','实现 /status：汇总模型、token、权限、工作区和会话状态。','python'],
+      ['Slash 命令','luxcode/commands/handlers/tasks.py','生成 /tasks 处理器，显示后台子 Agent 任务的状态与耗时。','python'],
+      ['Slash 命令','luxcode/commands/handlers/trace.py','生成 /trace 处理器，以树状形式显示 Agent 父子调用链。','python'],
+      ['Slash 命令','luxcode/commands/handlers/worktree.py','实现 /worktree 的 create/list/enter/exit/status 子命令。','python'],
+      ['Slash 命令','luxcode/commands/loader.py','从用户和项目命令目录解析 Markdown frontmatter，并把正文包装成 prompt handler。','python'],
+      ['Slash 命令','luxcode/commands/parser.py','识别 /command 与参数，并为前缀生成补全候选。','python'],
+      ['Slash 命令','luxcode/commands/registry.py','定义 Command、CommandContext、UIController 协议和同步/异步注册表。','python'],
+
+      // context and history
+      ['上下文','luxcode/context/__init__.py','集中导出压缩、替换记录、恢复状态和上下文预算 API。','python'],
+      ['上下文','luxcode/context/manager.py','实现工具结果持久化与替换、token 阈值、对话分轮、自动摘要压缩、恢复附件和熔断器。','python'],
+      ['文件历史','luxcode/filehistory/__init__.py','导出 FileHistory 与 Snapshot。','python'],
+      ['文件历史','luxcode/filehistory/history.py','写文件前保存 Backup，并按对话索引建立 Snapshot 以支持 rewind。','python'],
+
+      // hooks
+      ['Hooks','luxcode/hooks/__init__.py','导出 Hook 模型、事件、条件、加载器与引擎。','python'],
+      ['Hooks','luxcode/hooks/conditions.py','解析工具名、路径等字段的条件表达式，支持组合匹配。','python'],
+      ['Hooks','luxcode/hooks/engine.py','按生命周期事件筛选 Hook、执行动作、收集通知并可拒绝工具。','python'],
+      ['Hooks','luxcode/hooks/events.py','枚举 session、turn、send/receive、tool 等可挂接生命周期事件。','python'],
+      ['Hooks','luxcode/hooks/executors.py','分别执行 command、prompt、HTTP、agent 四类 Hook Action，并统一返回 ActionResult。','python'],
+      ['Hooks','luxcode/hooks/loader.py','把 YAML 中的 Hook 配置校验并转换为 Hook/Action/Condition 对象。','python'],
+      ['Hooks','luxcode/hooks/models.py','定义 Action、ActionResult、Hook、HookContext 和工具拒绝异常。','python'],
+
+      // mcp
+      ['MCP','luxcode/mcp/__init__.py','导出 MCPManager 及连接状态模型。','python'],
+      ['MCP','luxcode/mcp/client.py','封装单个 MCP stdio 或 Streamable HTTP 会话，负责连接、列工具、调用和关闭。','python'],
+      ['MCP','luxcode/mcp/manager.py','并发连接配置中的服务器，跟踪状态，把远程工具注册进 ToolRegistry。','python'],
+      ['MCP','luxcode/mcp/tool_wrapper.py','把 MCP JSON Schema 动态转成 Pydantic 参数模型，并将调用结果提取为 ToolResult。','python'],
+
+      // memory
+      ['记忆','luxcode/memory/__init__.py','汇总导出自动记忆、指令、召回与会话接口。','python'],
+      ['记忆','luxcode/memory/auto_memory.py','管理用户/项目 memory 目录、frontmatter、入口清单、提示构建、抽取结果写入和清理。','python'],
+      ['记忆','luxcode/memory/consolidation.py','通过文件锁和时间戳在后台挑选新会话，调用 LLM 合并长期记忆并防止并发重复。','python'],
+      ['记忆','luxcode/memory/instructions.py','发现 LUXCODE.md/兼容指令文件，处理 @include，并按 Git 根与工作目录层级合并。','python'],
+      ['记忆','luxcode/memory/recall.py','扫描记忆头部，让小型 LLM 选择与当前问题相关的条目并渲染提醒。','python'],
+      ['记忆','luxcode/memory/session.py','以 JSONL 保存消息/压缩边界，校验工具链，列出、恢复、删除会话并生成摘要元数据。','python'],
+
+      // permissions
+      ['权限','luxcode/permissions/__init__.py','导出权限模式、Decision、规则、危险命令和路径沙箱接口。','python'],
+      ['权限','luxcode/permissions/checker.py','组合模式默认值、危险检测、规则和路径检查，产出 allow/deny/ask 决策。','python'],
+      ['权限','luxcode/permissions/dangerous.py','分析 shell 命令中的危险模式，并对常见只读命令提供安全快速判断。','python'],
+      ['权限','luxcode/permissions/modes.py','定义权限模式与 ToolCategory 到 DecisionEffect 的默认映射。','python'],
+      ['权限','luxcode/permissions/rules.py','解析 allow/deny 规则文件、提取工具匹配内容并按用户/项目/local 优先级匹配。','python'],
+      ['权限','luxcode/permissions/sandbox.py','路径级沙箱，解析工具涉及的路径并判断是否越出工作目录或违反计划模式。','python'],
+
+      // os sandbox
+      ['OS 沙箱','luxcode/sandbox/__init__.py','定义 SandboxConfig 与抽象接口，并按平台选择 Seatbelt 或 bubblewrap。','python'],
+      ['OS 沙箱','luxcode/sandbox/bwrap.py','构造 Linux bubblewrap 命令，配置只读根、可写目录和可选网络隔离。','python'],
+      ['OS 沙箱','luxcode/sandbox/seatbelt.py','生成 macOS Seatbelt profile，并用 sandbox-exec 包装 Bash 命令。','python'],
+
+      // skills
+      ['Skills','luxcode/skills/__init__.py','导出 Skill 解析、加载、执行与安装接口。','python'],
+      ['Skills','luxcode/skills/builtins/__init__.py','预留的内建 Skills 包标记。','python'],
+      ['Skills','luxcode/skills/executor.py','按 Skill 定义替换参数，把正文激活到 Agent 并返回执行提示。','python'],
+      ['Skills','luxcode/skills/install.py','解析 GitHub Skill URL，通过 Contents/Blob API 递归下载，校验目录并安装到用户 Skills。','python'],
+      ['Skills','luxcode/skills/loader.py','扫描内建、用户和项目 Skills，处理名称覆盖、缓存、目录输出与重载。','python'],
+      ['Skills','luxcode/skills/parser.py','解析 SKILL.md frontmatter、校验名称和描述，并实现 $ARGUMENTS/位置参数替换。','python'],
+
+      // teams
+      ['团队','luxcode/teams/__init__.py','导出团队、成员、邮箱、共享任务和进度模型。','python'],
+      ['团队','luxcode/teams/backend_detect.py','检测当前 tmux/iTerm2 环境与可执行程序，选择 in-process、tmux 或 iTerm2 后端。','python'],
+      ['团队','luxcode/teams/coordinator.py','判断协调者模式，生成只调度不实现的 Lead 系统提示和团队上下文。','python'],
+      ['团队','luxcode/teams/mailbox.py','使用 JSONL 文件实现成员邮箱，支持定向消息、广播、读取和去重。','python'],
+      ['团队','luxcode/teams/manager.py','创建/删除团队、注册成员和句柄、维护后端资源、汇总 Lead 邮箱与队友进度。','python'],
+      ['团队','luxcode/teams/models.py','定义 BackendType、TeammateInfo、AgentTeam 及安全团队目录命名。','python'],
+      ['团队','luxcode/teams/progress.py','把工具调用翻译成人类可读活动，并维护每个队友的实时状态。','python'],
+      ['团队','luxcode/teams/registry.py','进程内 Agent 名称注册表，用于查重、查找和释放成员名。','python'],
+      ['团队','luxcode/teams/shared_task.py','使用锁保护的 JSON 文件实现团队共享任务的创建、认领、更新和列表。','python'],
+      ['团队','luxcode/teams/spawn_inprocess.py','在同一事件循环中运行长期队友，处理空闲等待、邮箱注入、关闭请求和恢复工作。','python'],
+      ['团队','luxcode/teams/spawn_iterm2.py','通过 it2 CLI 创建 iTerm2 pane 并启动独立队友进程。','python'],
+      ['团队','luxcode/teams/spawn_tmux.py','构造 CLI 命令，在 tmux pane 中启动队友，并支持发送按键与销毁 pane。','python'],
+      ['团队','luxcode/teams/transcript.py','序列化/反序列化 Conversation，把队友对话保存到团队目录并恢复。','python'],
+
+      // tools
+      ['工具','luxcode/tools/__init__.py','实现 ToolRegistry 的注册、启停、deferred 发现和协议 schema 导出，并创建六个基础工具。','python'],
+      ['工具','luxcode/tools/agent_tool.py','Agent 工具主体：解析参数、选择 Agent/模型、fork 上下文，运行子任务或队友，并可进入独立 worktree。','python'],
+      ['工具','luxcode/tools/ask_user.py','定义结构化问题参数、AskUserEvent 与 AskUser Tool，把回答请求交给交互界面。','python'],
+      ['工具','luxcode/tools/base.py','所有工具与流事件的抽象基类和数据模型，Tool 通过 Pydantic 参数执行。','python'],
+      ['工具','luxcode/tools/bash.py','在工作目录执行 shell 命令，可选 OS 沙箱；解释退出码并返回 stdout/stderr。','python'],
+      ['工具','luxcode/tools/diff.py','用 SequenceMatcher 生成统一风格 diff 和增删行统计。','python'],
+      ['工具','luxcode/tools/edit_file.py','执行唯一字符串替换；要求先读文件，并结合缓存、diff 与文件历史保证精确编辑。','python'],
+      ['工具','luxcode/tools/enter_worktree.py','Agent 可调用的进入已有 worktree 工具。','python'],
+      ['工具','luxcode/tools/exit_plan_mode.py','Agent 在完成计划文件后发出退出计划模式请求。','python'],
+      ['工具','luxcode/tools/exit_worktree.py','Agent 可调用的退出 worktree 工具，支持保留、合并或清理策略。','python'],
+      ['工具','luxcode/tools/file_state_cache.py','缓存文件读取时的内容哈希，写入/编辑前检测外部变化和未读文件。','python'],
+      ['工具','luxcode/tools/glob.py','按 glob 模式查找文件并按修改时间返回结果。','python'],
+      ['工具','luxcode/tools/grep.py','优先调用 ripgrep 在内容中搜索，支持文件过滤、上下文和结果上限。','python'],
+      ['工具','luxcode/tools/impl/__init__.py','工具内部实现子包标记。','python'],
+      ['工具','luxcode/tools/impl/tool_search.py','搜索 deferred 工具或按精确名称加载 schema，并标记为已发现。','python'],
+      ['工具','luxcode/tools/install_skill.py','将在线 Skill 安装流程包装为 Agent 可调用工具。','python'],
+      ['工具','luxcode/tools/load_skill.py','按名称加载 Skill 并把正文激活到当前 Agent 环境。','python'],
+      ['工具','luxcode/tools/read_file.py','按行读取 UTF-8 文件，限制范围并更新 FileStateCache 与 RecoveryState。','python'],
+      ['工具','luxcode/tools/send_message.py','团队成员之间发送 direct/broadcast/shutdown 等邮箱消息。','python'],
+      ['工具','luxcode/tools/synthetic_output.py','生成合成工具结果，供内部编排或兼容流程将文本作为标准 ToolResult 返回。','python'],
+      ['工具','luxcode/tools/task_create.py','在 SharedTaskStore 中创建团队任务，可声明描述、负责人和依赖。','python'],
+      ['工具','luxcode/tools/task_get.py','读取指定团队任务的详细状态。','python'],
+      ['工具','luxcode/tools/task_list.py','列出团队共享任务并按状态组织输出。','python'],
+      ['工具','luxcode/tools/task_update.py','更新、认领或完成共享任务，并处理依赖与所有者。','python'],
+      ['工具','luxcode/tools/team_create.py','创建团队运行环境，选择后端并向 Lead 注入团队与协调者状态。','python'],
+      ['工具','luxcode/tools/team_delete.py','关闭成员、清理 pane/worktree/团队文件并删除团队。','python'],
+      ['工具','luxcode/tools/write_file.py','创建或完整覆盖文件；写入前检查状态、保存历史并返回 diff 摘要。','python'],
+
+      // worktree
+      ['Worktree','luxcode/worktree/__init__.py','导出 worktree 模型、管理器、变更检查、会话和清理 API。','python'],
+      ['Worktree','luxcode/worktree/changes.py','调用 Git 统计未提交/未跟踪变化和未推送提交，生成 CleanupResult。','python'],
+      ['Worktree','luxcode/worktree/cleanup.py','识别临时 worktree，按最后活动时间异步清理陈旧目录并提供周期任务。','python'],
+      ['Worktree','luxcode/worktree/integration.py','生成随机 worktree 名称和进入隔离目录后的系统提醒。','python'],
+      ['Worktree','luxcode/worktree/manager.py','封装 git worktree add/remove/list，负责创建、进入、退出、自动清理和会话恢复。','python'],
+      ['Worktree','luxcode/worktree/models.py','定义 Worktree 与 WorktreeSession 数据结构。','python'],
+      ['Worktree','luxcode/worktree/session.py','在 .luxcode 下保存/读取当前 worktree 会话 JSON。','python'],
+      ['Worktree','luxcode/worktree/setup.py','创建后复制 local 配置和 hooks，建立依赖目录软链，并复制必要的 ignored 文件。','python'],
+      ['Worktree','luxcode/worktree/slug.py','校验 branch/worktree 名称并把斜杠等字符扁平化为安全目录名。','python'],
+
+      // tests
+      ['测试','tests/test_agent.py','覆盖 Agent 流式事件、工具循环、并行执行、权限、重试和完成行为。','test'],
+      ['测试','tests/test_clear.py','验证 /clear 对对话、UI 与相关状态的清理。','test'],
+      ['测试','tests/test_commands.py','覆盖命令解析、注册、补全、Markdown 命令加载和主要 handler。','test'],
+      ['测试','tests/test_consolidation.py','验证记忆 consolidation 的锁、时间戳、会话选择和失败回滚。','test'],
+      ['测试','tests/test_context.py','覆盖工具结果预算、压缩阈值、消息分轮、自动 compact 与恢复附件。','test'],
+      ['测试','tests/test_context_window.py','验证 context window 的显式配置、远端探测、模型映射和默认回退。','test'],
+      ['测试','tests/test_coordinator_multi_team.py','验证多个团队并存时协调者模式与工具过滤不会串队。','test'],
+      ['测试','tests/test_diff.py','验证 diff 文本以及新增、删除行统计。','test'],
+      ['测试','tests/test_edit_file.py','验证 EditFile 的精确替换和边界错误。','test'],
+      ['测试','tests/test_hello_world.py','最小测试，用于确认 pytest 环境可运行。','test'],
+      ['测试','tests/test_hooks.py','覆盖 Hook 配置、条件、事件、四类执行器、通知和工具拒绝。','test'],
+      ['测试','tests/test_mcp.py','覆盖 MCP 连接管理、工具包装、schema 转换和调用结果。','test'],
+      ['测试','tests/test_memory.py','覆盖记忆目录、frontmatter、指令 include、召回、Session JSONL 与恢复。','test'],
+      ['测试','tests/test_permissions.py','覆盖权限模式、危险命令、规则优先级、路径沙箱和综合决策。','test'],
+      ['测试','tests/test_recovery.py','验证压缩后的文件与 Skill 恢复附件构造。','test'],
+      ['测试','tests/test_replacement_state.py','验证工具结果替换记录的持久化、重建与幂等行为。','test'],
+      ['测试','tests/test_serialization.py','验证三种 Provider 协议的消息、thinking、工具调用与结果格式。','test'],
+      ['测试','tests/test_skills.py','覆盖 Skill 解析、参数替换、加载优先级、执行与 URL 安装逻辑。','test'],
+      ['测试','tests/test_subagent.py','覆盖 Agent 定义、fork、工具过滤、后台任务、trace 和 AgentTool。','test'],
+      ['测试','tests/test_teams.py','覆盖团队模型、邮箱、共享任务、后端检测、管理器和 teammate 生命周期。','test'],
+      ['测试','tests/test_tool_call_block.py','验证 TUI ToolCallBlock 的标题、状态和展开内容。','test'],
+      ['测试','tests/test_tool_search.py','验证 deferred 工具搜索、精确选择、发现状态和协议 schema。','test'],
+      ['测试','tests/test_worktree.py','覆盖 slug、Git 变更检查、创建/进入/退出、setup 和清理流程。','test'],
+      ['测试','tests/verify_subagent.py','可执行验证脚本，以真实/伪造场景检查子 Agent 端到端行为。','verification']
+    ];
+
+    const catalog = document.getElementById('catalog');
+    const searchInput = document.getElementById('fileSearch');
+    const groupFilter = document.getElementById('groupFilter');
+    const summary = document.getElementById('catalogSummary');
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    }
+
+    function renderCatalog() {
+      const query = searchInput.value.trim().toLowerCase();
+      const selected = groupFilter.value;
+      const filtered = files.filter(([group, path, desc, type]) => {
+        const matchesGroup = !selected || group === selected;
+        const haystack = `${group} ${path} ${desc} ${type}`.toLowerCase();
+        return matchesGroup && (!query || haystack.includes(query));
+      });
+      const grouped = new Map();
+      filtered.forEach(file => {
+        if (!grouped.has(file[0])) grouped.set(file[0], []);
+        grouped.get(file[0]).push(file);
+      });
+      if (!filtered.length) {
+        catalog.innerHTML = '<div class="card empty">没有匹配的文件，试试更短的关键词。</div>';
+      } else {
+        catalog.innerHTML = [...grouped.entries()].map(([group, rows]) => `
+          <details class="catalog-group" ${query || selected ? 'open' : (['核心运行时','子 Agent','工具'].includes(group) ? 'open' : '')}>
+            <summary><span>${escapeHtml(group)} <span class="group-count">${rows.length} files</span></span></summary>
+            <div class="file-list">${rows.map(([, path, desc, type]) => `
+              <div class="file-row">
+                <div class="file-path">${escapeHtml(path)}</div>
+                <div class="file-desc">${escapeHtml(desc)}</div>
+                <div class="file-type">${escapeHtml(type)}</div>
+              </div>`).join('')}</div>
+          </details>`).join('');
+      }
+      summary.textContent = `${filtered.length} / ${files.length} 个文件`;
+    }
+
+    [...new Set(files.map(file => file[0]))].forEach(group => {
+      const option = document.createElement('option');
+      option.value = group;
+      option.textContent = group;
+      groupFilter.appendChild(option);
+    });
+    searchInput.addEventListener('input', renderCatalog);
+    groupFilter.addEventListener('change', renderCatalog);
+    renderCatalog();
+
+    document.querySelectorAll('.tab-button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab-button').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        document.querySelector(`[data-panel="${button.dataset.tab}"]`).classList.add('active');
+      });
+    });
+
+    const themeButton = document.getElementById('themeButton');
+    const storedTheme = localStorage.getItem('luxcode-wiki-theme');
+    if (storedTheme) document.documentElement.dataset.theme = storedTheme;
+    themeButton.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('luxcode-wiki-theme', next);
+    });
+
+    const menuButton = document.getElementById('menuButton');
+    menuButton.addEventListener('click', () => document.body.classList.toggle('menu-open'));
+    document.querySelectorAll('.nav a').forEach(link => link.addEventListener('click', () => document.body.classList.remove('menu-open')));
+
+    const navLinks = [...document.querySelectorAll('.nav a')];
+    const observed = navLinks.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      });
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    observed.forEach(section => observer.observe(section));
+
+    document.addEventListener('keydown', event => {
+      if (event.key === '/' && document.activeElement !== searchInput && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+        event.preventDefault();
+        searchInput.focus();
+        location.hash = 'catalog-section';
+      }
+      if (event.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+        searchInput.blur();
+        renderCatalog();
+      }
+    });
+  </script>
+</body>
+</html>
